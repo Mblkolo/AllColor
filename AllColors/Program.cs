@@ -75,6 +75,7 @@ namespace AllColors
         public Rgb Value;
 
         public bool IsUsed;
+        public bool IsLeaf;
     }
 
     static class VpTree
@@ -95,20 +96,11 @@ namespace AllColors
                 if (allColors.Length == 1)
                 {
                     node.Value = color;
+                    node.IsLeaf = true;
                     continue;
                 }
 
-                if (allColors.Length == 2)
-                {
-                    node.Value = color;
-                    node.Radius = allColors[1].QDist(color);
-                    node.Insade = new VpNode();
-
-                    candidats.Push(Tuple.Create(node.Insade, new Rgb[] { allColors[1] }));
-                    continue;
-                }
-
-                var sorted = allColors.Skip(1).OrderBy(x => color.QDist(x)).ToArray();
+                var sorted = allColors.OrderBy(x => color.QDist(x)).ToArray();
                 var medianIndex = (sorted.Length - 1) / 2; //2 - 0, 3 - 1, 4 - 1, 5 - 2
 
                 var inside = new VpNode();
