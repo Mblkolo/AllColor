@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -80,7 +82,7 @@ namespace AllColors
         public static VpNode CreateTree(Rgb[] colors)
         {
             var root = new VpNode();
-            
+
             var candidats = new Stack<Tuple<VpNode, Rgb[]>>();
             candidats.Push(Tuple.Create(root, colors));
             while (candidats.Count > 0)
@@ -96,13 +98,13 @@ namespace AllColors
                     continue;
                 }
 
-                if(allColors.Length == 2)
+                if (allColors.Length == 2)
                 {
                     node.Value = color;
                     node.Radius = allColors[1].QDist(color);
                     node.Insade = new VpNode();
 
-                    candidats.Push(Tuple.Create(node.Insade, new Rgb[]{ allColors [1]}));
+                    candidats.Push(Tuple.Create(node.Insade, new Rgb[] { allColors[1] }));
                     continue;
                 }
 
@@ -131,24 +133,25 @@ namespace AllColors
         public static VpNode Near(VpNode root, Rgb target)
         {
             int bestQDist = int.MaxValue;
-            VpNode bestCandidat = root;
+            VpNode bestCandidat = null;
 
             var candidats = new Stack<VpNode>();
             candidats.Push(root);
-            while(candidats.Count>0)
+            while (candidats.Count > 0)
             {
                 var node = candidats.Pop();
+
                 var dist = node.Value.QDist(target);
-                if(dist < bestQDist)
+                if (dist < bestQDist && !node.IsUsed)
                 {
                     bestQDist = dist;
                     bestCandidat = node;
                 }
 
-                if (node.Insade != null && !node.Outsade.IsUsed && !(dist > bestQDist + node.Radius))
+                if (node.Insade != null && !(dist > bestQDist + node.Radius))
                     candidats.Push(node.Insade);
 
-                if (node.Outsade != null && !node.Outsade.IsUsed && !(dist < node.Radius - bestQDist))
+                if (node.Outsade != null && !(dist < node.Radius - bestQDist))
                     candidats.Push(node.Outsade);
             }
 
@@ -177,18 +180,25 @@ namespace AllColors
 
 
             var front = new Stack<YX>();
-            front.Push(new YX(0, 0));
 
             var neighbors = new YX[8];
             var canvas = new Rgb[height, width];
-            foreach(var color in allColors)
+            foreach (var color in allColors)
             {
+                if(front.Count == 0)
+                {
+                    canvas[0, 0] = color;
+                    front.Push(new YX(1, 0));
+                    front.Push(new YX(0, 1));
+                    continue;
+                }
+
                 var f = front.Pop();
-                while (!canvas[f.Y, f.X].isAssigned)
+                while (canvas[f.Y, f.X].isAssigned)
                     f = front.Pop();
 
                 int r = 0, g = 0, b = 0, count = 0;
-                
+
                 neighbors[0] = new YX((ushort)(f.Y - 1), (ushort)(f.X - 1));
                 neighbors[1] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 0));
                 neighbors[2] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 1));
@@ -197,13 +207,13 @@ namespace AllColors
                 neighbors[5] = new YX((ushort)(f.Y + 1), (ushort)(f.X - 1));
                 neighbors[6] = new YX((ushort)(f.Y + 1), (ushort)(f.X + 0));
                 neighbors[7] = new YX((ushort)(f.Y + 1), (ushort)(f.X + 1));
-                foreach(var n in neighbors)
+                foreach (var n in neighbors)
                 {
                     if (n.X < 0 || n.Y < 0 || n.X >= width || n.Y >= height)
                         continue;
 
                     var c = canvas[n.Y, n.X];
-                    if(!c.isAssigned)
+                    if (!c.isAssigned)
                     {
                         front.Push(n);
                         continue;
@@ -214,7 +224,7 @@ namespace AllColors
                     b += c.B;
                     count++;
                 }
-                if(count >0)
+                if (count > 0)
                 {
                     r /= count;
                     g /= count;
@@ -226,7 +236,18 @@ namespace AllColors
                 canvas[f.Y, f.X] = node.Value;
 
 
+                using (var bitmap = new Bitmap(width, height))
+                {
+                    for(int y=0; y<height; ++y)
+                        for(int x =0; x<width; ++x)
+                        {
+                            var c = canvas[y, x];
+                            bitmap.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
+                        }
 
+                    Directory.CreateDirectory("Out");
+                    bitmap.Save("Out\\Image_" + DateTime.Now.Ticks + ".png");
+                }
             }
         }
     }
