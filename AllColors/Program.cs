@@ -32,7 +32,38 @@ namespace AllColors
         }
     }
 
+    struct YX
+    {
+        public readonly ushort X;
+        public readonly ushort Y;
+        private readonly int hash;
 
+        public YX(ushort y, ushort x)
+        {
+            X = x;
+            Y = y;
+            hash = (y << 16) | x;
+        }
+
+        public override int GetHashCode()
+        {
+            return hash;
+        }
+
+        //public override bool Equals(object obj)
+        //{
+        //    if (obj == null)
+        //        return false;
+
+        //    if ( !(obj is XY))
+        //        return false;
+
+        //    var p = (XY)obj;
+        //    return (X == p.X) && (Y == p.Y);
+        //}
+
+
+    }
 
     class VpNode
     {
@@ -41,10 +72,7 @@ namespace AllColors
         public VpNode Outsade;
         public Rgb Value;
 
-        public bool IsLeaf
-        {
-            get { return Outsade == null || Insade == null; }
-        }
+        public bool IsUsed;
     }
 
     static class VpTree
@@ -117,10 +145,10 @@ namespace AllColors
                     bestCandidat = node;
                 }
 
-                if (node.Insade != null && !(dist > bestQDist + node.Radius))
+                if (node.Insade != null && !node.Outsade.IsUsed && !(dist > bestQDist + node.Radius))
                     candidats.Push(node.Insade);
 
-                if (node.Outsade != null && !(dist < node.Radius - bestQDist))
+                if (node.Outsade != null && !node.Outsade.IsUsed && !(dist < node.Radius - bestQDist))
                     candidats.Push(node.Outsade);
             }
 
@@ -136,6 +164,8 @@ namespace AllColors
             //2-8
             const int colorBits = 2;
             const int colorCount = 1 << (colorBits - 1);
+            const int width = 2;
+            const int height = colorCount * colorCount * colorCount / 2;
 
             var allColors = new List<Rgb>();
             for (int r = 0; r < colorCount; ++r)
@@ -145,9 +175,59 @@ namespace AllColors
 
             var tree = VpTree.CreateTree(allColors.ToArray());
 
-            Console.WriteLine(VpTree.Near(tree, new Rgb(0, 0, 0)).Value);
-            Console.WriteLine(VpTree.Near(tree, new Rgb(1, 1, 1)).Value);
-            Console.WriteLine(VpTree.Near(tree, new Rgb(255, 200, 200)).Value);
+
+            var front = new Stack<YX>();
+            front.Push(new YX(0, 0));
+
+            var neighbors = new YX[8];
+            var canvas = new Rgb[height, width];
+            foreach(var color in allColors)
+            {
+                var f = front.Pop();
+                while (!canvas[f.Y, f.X].isAssigned)
+                    f = front.Pop();
+
+                int r = 0, g = 0, b = 0, count = 0;
+                
+                neighbors[0] = new YX((ushort)(f.Y - 1), (ushort)(f.X - 1));
+                neighbors[1] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 0));
+                neighbors[2] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 1));
+                neighbors[3] = new YX((ushort)(f.Y + 0), (ushort)(f.X - 1));
+                neighbors[4] = new YX((ushort)(f.Y + 0), (ushort)(f.X + 1));
+                neighbors[5] = new YX((ushort)(f.Y + 1), (ushort)(f.X - 1));
+                neighbors[6] = new YX((ushort)(f.Y + 1), (ushort)(f.X + 0));
+                neighbors[7] = new YX((ushort)(f.Y + 1), (ushort)(f.X + 1));
+                foreach(var n in neighbors)
+                {
+                    if (n.X < 0 || n.Y < 0 || n.X >= width || n.Y >= height)
+                        continue;
+
+                    var c = canvas[n.Y, n.X];
+                    if(!c.isAssigned)
+                    {
+                        front.Push(n);
+                        continue;
+                    }
+
+                    r += c.R;
+                    g += c.G;
+                    b += c.B;
+                    count++;
+                }
+                if(count >0)
+                {
+                    r /= count;
+                    g /= count;
+                    b /= count;
+                }
+
+                VpNode node = VpTree.Near(tree, new Rgb((byte)r, (byte)g, (byte)b));
+                node.IsUsed = true;
+                canvas[f.Y, f.X] = node.Value;
+
+
+
+            }
         }
     }
 }
