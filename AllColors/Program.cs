@@ -8,6 +8,16 @@ using System.Threading.Tasks;
 
 namespace AllColors
 {
+    static class Check
+    {
+        public static void Assert(bool s, string m = "")
+        {
+            if (!s)
+                throw new Exception(m);
+        }
+    }
+
+
     struct Rgb
     {
         public byte R;
@@ -52,6 +62,11 @@ namespace AllColors
             return hash;
         }
 
+        public override string ToString()
+        {
+            return string.Format("{{{0}, {1}}}", Y, X);
+        }
+
         //public override bool Equals(object obj)
         //{
         //    if (obj == null)
@@ -72,9 +87,9 @@ namespace AllColors
         public int Radius;
         public VpNode Insade;
         public VpNode Outsade;
+        public VpNode Parent;
         public Rgb Value;
 
-        public bool IsUsed;
         public bool IsLeaf;
     }
 
@@ -103,12 +118,12 @@ namespace AllColors
                 var sorted = allColors.OrderBy(x => color.QDist(x)).ToArray();
                 var medianIndex = (sorted.Length - 1) / 2; //2 - 0, 3 - 1, 4 - 1, 5 - 2
 
-                var inside = new VpNode();
+                var inside = new VpNode { Parent = node };
                 var insideColors = new Rgb[medianIndex + 1];
                 Array.Copy(sorted, insideColors, medianIndex + 1);
                 candidats.Push(Tuple.Create(inside, insideColors));
 
-                var outside = new VpNode();
+                var outside = new VpNode { Parent = node };
                 var outsideColors = new Rgb[sorted.Length - (medianIndex + 1)];
                 Array.Copy(sorted, medianIndex + 1, outsideColors, 0, sorted.Length - (medianIndex + 1));
                 candidats.Push(Tuple.Create(outside, outsideColors));
@@ -124,7 +139,7 @@ namespace AllColors
 
         public static VpNode Near(VpNode root, Rgb target)
         {
-            int bestQDist = int.MaxValue;
+            long bestQDist = uint.MaxValue;
             VpNode bestCandidat = null;
 
             var candidats = new Stack<VpNode>();
@@ -133,8 +148,13 @@ namespace AllColors
             {
                 var node = candidats.Pop();
 
-                var dist = node.Value.QDist(target);
-                if (dist < bestQDist && !node.IsUsed)
+                long dist = node.Value.QDist(target);
+                if(!node.IsLeaf)
+                    dist = dist + node.Radius + 2 * dist * node.Radius;
+
+                Check.Assert(dist >= 0);
+
+                if (dist <= bestQDist) // = чтобы добраться до листьев
                 {
                     bestQDist = dist;
                     bestCandidat = node;
@@ -147,7 +167,55 @@ namespace AllColors
                     candidats.Push(node.Outsade);
             }
 
+            Check.Assert(bestCandidat.IsLeaf, "Узел не лист");
+
             return bestCandidat;
+        }
+
+        public static void Remove(VpNode node)
+        {
+            Check.Assert(node.IsLeaf, "Узел не лист");
+
+            var parent = node.Parent;
+            if (parent == null)
+                return;
+
+            if (parent.Insade == node)
+            {
+                var anotherNode = parent.Outsade;
+
+                parent.Insade = anotherNode.Insade;
+                parent.Outsade = anotherNode.Outsade;
+                parent.IsLeaf = anotherNode.IsLeaf;
+                parent.Value = anotherNode.Value;
+                parent.Radius = anotherNode.Radius;
+
+                if (parent.Insade != null)
+                    parent.Insade.Parent = parent;
+                if (parent.Outsade != null)
+                    parent.Outsade.Parent = parent;
+                return;
+            }
+
+            if (parent.Outsade == node)
+            {
+                var anotherNode = parent.Insade;
+
+                parent.Insade = anotherNode.Insade;
+                parent.Outsade = anotherNode.Outsade;
+                parent.IsLeaf = anotherNode.IsLeaf;
+                parent.Value = anotherNode.Value;
+                parent.Radius = anotherNode.Radius;
+
+                if (parent.Insade != null)
+                    parent.Insade.Parent = parent;
+                if (parent.Outsade != null)
+                    parent.Outsade.Parent = parent;
+
+                return;
+            }
+
+            throw new Exception("Не правильный родитель");
         }
     }
 
@@ -157,10 +225,10 @@ namespace AllColors
         static void Main(string[] args)
         {
             //2-8
-            const int colorBits = 2;
+            const int colorBits = 7;
             const int colorCount = 1 << (colorBits - 1);
-            const int width = 2;
-            const int height = colorCount * colorCount * colorCount / 2;
+            const int width = 512;
+            const int height = colorCount * colorCount * colorCount / width;
 
             var allColors = new List<Rgb>();
             for (int r = 0; r < colorCount; ++r)
@@ -170,26 +238,29 @@ namespace AllColors
 
             var tree = VpTree.CreateTree(allColors.ToArray());
 
+            var rnd = new Random();
+            var front = new List<YX>();
+            front.Add(new YX(height / 2, width / 2));
 
-            var front = new Stack<YX>();
+            Func<YX> ololo = () => 
+            {
+                var rndIndex = rnd.Next(front.Count);
+                var lastIndex = front.Count - 1;
+                var result = front[rndIndex];
+                front[rndIndex] = front[lastIndex];
+                front.RemoveAt(lastIndex);
+                return result;
+            };
 
             var neighbors = new YX[8];
             var canvas = new Rgb[height, width];
             foreach (var color in allColors)
             {
-                if(front.Count == 0)
-                {
-                    canvas[0, 0] = color;
-                    front.Push(new YX(1, 0));
-                    front.Push(new YX(0, 1));
-                    continue;
-                }
-
-                var f = front.Pop();
-                while (canvas[f.Y, f.X].isAssigned)
-                    f = front.Pop();
-
                 int r = 0, g = 0, b = 0, count = 0;
+
+                var f = ololo();
+                while (canvas[f.Y, f.X].isAssigned)
+                    f = ololo();
 
                 neighbors[0] = new YX((ushort)(f.Y - 1), (ushort)(f.X - 1));
                 neighbors[1] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 0));
@@ -207,7 +278,7 @@ namespace AllColors
                     var c = canvas[n.Y, n.X];
                     if (!c.isAssigned)
                     {
-                        front.Push(n);
+                        front.Add(n);
                         continue;
                     }
 
@@ -224,22 +295,21 @@ namespace AllColors
                 }
 
                 VpNode node = VpTree.Near(tree, new Rgb((byte)r, (byte)g, (byte)b));
-                node.IsUsed = true;
                 canvas[f.Y, f.X] = node.Value;
+                VpTree.Remove(node);
+            }
 
+            using (var bitmap = new Bitmap(width, height))
+            {
+                for (int y = 0; y < height; ++y)
+                    for (int x = 0; x < width; ++x)
+                    {
+                        var c = canvas[y, x];
+                        bitmap.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
+                    }
 
-                using (var bitmap = new Bitmap(width, height))
-                {
-                    for(int y=0; y<height; ++y)
-                        for(int x =0; x<width; ++x)
-                        {
-                            var c = canvas[y, x];
-                            bitmap.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
-                        }
-
-                    Directory.CreateDirectory("Out");
-                    bitmap.Save("Out\\Image_" + DateTime.Now.Ticks + ".png");
-                }
+                Directory.CreateDirectory("Out");
+                bitmap.Save("Out\\Image_" + DateTime.Now.Ticks + ".png");
             }
         }
     }
