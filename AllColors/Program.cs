@@ -225,9 +225,9 @@ namespace AllColors
         static void Main(string[] args)
         {
             //2-8
-            const int colorBits = 6;
+            const int colorBits = 7;
             const int colorCount = 1 << (colorBits - 1);
-            const int width = 256;
+            const int width = 512;
             const int height = colorCount * colorCount * colorCount / width;
 
             var allColors = new List<Rgb>();
@@ -307,7 +307,7 @@ namespace AllColors
                 for (int i = 0; i < allColors.Count; ++i )
                 {
                     var color = allColors[i];
-                    var len = (color.R - r) * (color.R - r) + (color.G - g) * (color.G - g) + (color.B - b) * (color.B - b);
+                    var len = Math.Abs(color.R - r) + Math.Abs(color.G - g) + Math.Abs(color.B - b);
                     if(len < minLen)
                     {
                         randIndex = 1;
@@ -322,7 +322,12 @@ namespace AllColors
                     }
                 }
                 canvas[f.Y, f.X] = allColors[bestIndex];
-                allColors.RemoveAt(bestIndex);
+
+                allColors[bestIndex] = allColors[allColors.Count-1];
+                allColors.RemoveAt(allColors.Count-1);
+
+                if (allColors.Count % 1000 == 0)
+                    Console.WriteLine(allColors.Count);
             }
 
             using (var bitmap = new Bitmap(width, height))
