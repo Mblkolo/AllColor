@@ -35,7 +35,7 @@ namespace AllColors
 
         public int QDist(Rgb color)
         {
-            return (color.R - R) * (color.R - R) + (color.G - G) * (color.G - G) + (color.B - B) * (color.B - B);
+            return Math.Abs(color.R - R) + Math.Abs(color.G - G) + Math.Abs(color.B - B);
         }
 
         public override string ToString()
@@ -142,15 +142,18 @@ namespace AllColors
             long bestQDist = uint.MaxValue;
             VpNode bestCandidat = null;
 
+            int i=0;
             var candidats = new Stack<VpNode>();
             candidats.Push(root);
+
             while (candidats.Count > 0)
             {
+                i++;
                 var node = candidats.Pop();
 
                 long dist = node.Value.QDist(target);
                 if(!node.IsLeaf)
-                    dist = dist + node.Radius + 2 * dist * node.Radius;
+                    dist = dist + node.Radius;
 
                 Check.Assert(dist >= 0);
 
@@ -160,13 +163,15 @@ namespace AllColors
                     bestCandidat = node;
                 }
 
-                if (node.Insade != null && !(dist > bestQDist + node.Radius))
-                    candidats.Push(node.Insade);
+                dist = node.Value.QDist(target);
 
                 if (node.Outsade != null && !(dist < node.Radius - bestQDist))
                     candidats.Push(node.Outsade);
-            }
 
+                if (node.Insade != null && !(dist > bestQDist + node.Radius))
+                    candidats.Push(node.Insade);
+            }
+            //Console.WriteLine(i);
             Check.Assert(bestCandidat.IsLeaf, "Узел не лист");
 
             return bestCandidat;
