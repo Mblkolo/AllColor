@@ -241,11 +241,11 @@ namespace AllColors
                     for (int b = 0; b < colorCount; ++b)
                         allColors.Add(new Rgb((byte)(r * 256 / colorCount), (byte)(g * 256 / colorCount), (byte)(b * 256 / colorCount)));
 
-            var tree = VpTree.CreateTree(allColors.ToArray());
+            //var tree = VpTree.CreateTree(allColors.ToArray());
 
             var rnd = new Random();
             var front = new List<YX>();
-            front.Add(new YX(height / 2, width / 2));
+            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(height)));
 
             Func<YX> ololo = () => 
             {
@@ -259,14 +259,13 @@ namespace AllColors
 
             var neighbors = new YX[8];
             var canvas = new Rgb[height, width];
-            foreach (var color in allColors)
+            while (front.Count > 0)
             {
-                int r = 0, g = 0, b = 0, count = 0;
-
                 var f = ololo();
-                while (canvas[f.Y, f.X].isAssigned)
-                    f = ololo();
+                if(canvas[f.Y, f.X].isAssigned)
+                    continue;
 
+                int r = 0, g = 0, b = 0, count = 0;
                 neighbors[0] = new YX((ushort)(f.Y - 1), (ushort)(f.X - 1));
                 neighbors[1] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 0));
                 neighbors[2] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 1));
@@ -298,10 +297,42 @@ namespace AllColors
                     g /= count;
                     b /= count;
                 }
+                else
+                {
+                    r = rnd.Next(128);
+                    g = rnd.Next(128);
+                    b = rnd.Next(128);
+                }
 
-                VpNode node = VpTree.Near(tree, new Rgb((byte)r, (byte)g, (byte)b));
-                canvas[f.Y, f.X] = node.Value;
-                VpTree.Remove(node);
+
+
+                int minLen = int.MaxValue;
+                int randIndex = 1;
+                int bestIndex = 0;
+                for (int i = 0; i < allColors.Count; ++i )
+                {
+                    var color = allColors[i];
+                    var len = Math.Abs(color.R - r) + Math.Abs(color.G - g) + Math.Abs(color.B - b);
+                    if(len < minLen)
+                    {
+                        randIndex = 1;
+                        minLen = len;
+                        bestIndex = i;
+                    }
+                    else if(len == minLen)
+                    {
+                        randIndex++;
+                        if (rnd.Next(randIndex) == 0)
+                            bestIndex = i;
+                    }
+                }
+                canvas[f.Y, f.X] = allColors[bestIndex];
+
+                allColors[bestIndex] = allColors[allColors.Count-1];
+                allColors.RemoveAt(allColors.Count-1);
+
+                if (allColors.Count % 1000 == 0)
+                    Console.WriteLine(allColors.Count);
             }
 
             using (var bitmap = new Bitmap(width, height))
