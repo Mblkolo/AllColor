@@ -230,9 +230,9 @@ namespace AllColors
         static void Main(string[] args)
         {
             //2-8
-            const int colorBits = 7;
-            const int colorCount = 1 << (colorBits - 1);
-            const int width = 512;
+            const int colorBits = 8;
+            const int colorCount = 1 << colorBits;
+            const int width = 4096;
             const int height = colorCount * colorCount * colorCount / width;
 
             var allColors = new List<Rgb>();
@@ -244,8 +244,24 @@ namespace AllColors
             //var tree = VpTree.CreateTree(allColors.ToArray());
 
             var rnd = new Random();
+            for(int i=allColors.Count - 1; i > 0; --i )
+            {
+                var rand = rnd.Next(i);
+                var t = allColors[i];
+                allColors[i] = allColors[rand];
+                allColors[rand] = t;
+            }
+
+
+
             var front = new List<YX>();
-            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(height)));
+            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            front.Add(new YX((ushort)(height/2), (ushort)(width/2)));
 
             Func<YX> ololo = () => 
             {
@@ -309,7 +325,7 @@ namespace AllColors
                 int minLen = int.MaxValue;
                 int randIndex = 1;
                 int bestIndex = 0;
-                for (int i = 0; i < allColors.Count; ++i )
+                for (int i = 0; i < allColors.Count && i<1000; ++i)
                 {
                     var color = allColors[i];
                     var len = Math.Abs(color.R - r) + Math.Abs(color.G - g) + Math.Abs(color.B - b);
@@ -331,7 +347,7 @@ namespace AllColors
                 allColors[bestIndex] = allColors[allColors.Count-1];
                 allColors.RemoveAt(allColors.Count-1);
 
-                if (allColors.Count % 1000 == 0)
+                if (allColors.Count % 10000 == 0)
                     Console.WriteLine(allColors.Count);
             }
 
