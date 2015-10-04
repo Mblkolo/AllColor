@@ -230,9 +230,9 @@ namespace AllColors
         static void Main(string[] args)
         {
             //2-8
-            const int colorBits = 7;
-            const int colorCount = 1 << (colorBits - 1);
-            const int width = 512;
+            const int colorBits = 8;
+            const int colorCount = 1 << (colorBits);
+            const int width = 4096;
             const int height = colorCount * colorCount * colorCount / width;
 
             var allColors = new List<Rgb>();
@@ -241,11 +241,27 @@ namespace AllColors
                     for (int b = 0; b < colorCount; ++b)
                         allColors.Add(new Rgb((byte)(r * 256 / colorCount), (byte)(g * 256 / colorCount), (byte)(b * 256 / colorCount)));
 
-            var tree = VpTree.CreateTree(allColors.ToArray());
+            //var tree = VpTree.CreateTree(allColors.ToArray());
 
             var rnd = new Random();
+            for(int i=allColors.Count - 1; i > 0; --i )
+            {
+                var rand = rnd.Next(i);
+                var t = allColors[i];
+                allColors[i] = allColors[rand];
+                allColors[rand] = t;
+            }
+
+
+
             var front = new List<YX>();
-            front.Add(new YX(height / 2, width / 2));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            front.Add(new YX((ushort)(height/2), (ushort)(width/2)));
 
             Func<YX> ololo = () => 
             {
@@ -259,14 +275,13 @@ namespace AllColors
 
             var neighbors = new YX[8];
             var canvas = new Rgb[height, width];
-            foreach (var color in allColors)
+            while (front.Count > 0)
             {
-                int r = 0, g = 0, b = 0, count = 0;
-
                 var f = ololo();
-                while (canvas[f.Y, f.X].isAssigned)
-                    f = ololo();
+                if(canvas[f.Y, f.X].isAssigned)
+                    continue;
 
+                double r = 0, g = 0, b = 0, count = 0;
                 neighbors[0] = new YX((ushort)(f.Y - 1), (ushort)(f.X - 1));
                 neighbors[1] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 0));
                 neighbors[2] = new YX((ushort)(f.Y - 1), (ushort)(f.X + 1));
@@ -275,6 +290,9 @@ namespace AllColors
                 neighbors[5] = new YX((ushort)(f.Y + 1), (ushort)(f.X - 1));
                 neighbors[6] = new YX((ushort)(f.Y + 1), (ushort)(f.X + 0));
                 neighbors[7] = new YX((ushort)(f.Y + 1), (ushort)(f.X + 1));
+
+                Rgb qwe = new Rgb();
+                int randIndex = 1;
                 foreach (var n in neighbors)
                 {
                     if (n.X < 0 || n.Y < 0 || n.X >= width || n.Y >= height)
@@ -287,21 +305,73 @@ namespace AllColors
                         continue;
                     }
 
-                    r += c.R;
-                    g += c.G;
-                    b += c.B;
+                    if (rnd.Next(randIndex) == 0)
+                    {
+                        r = c.R;
+                        g = c.G;
+                        b = c.B;
+                    }
+                    randIndex++;
+
                     count++;
                 }
                 if (count > 0)
                 {
-                    r /= count;
-                    g /= count;
-                    b /= count;
+                    //r /= count;
+                    //g /= count;
+                    //b /= count;
+                }
+                else
+                {
+                    r = rnd.Next(256);
+                    g = rnd.Next(256);
+                    b = rnd.Next(256);
                 }
 
-                VpNode node = VpTree.Near(tree, new Rgb((byte)r, (byte)g, (byte)b));
-                canvas[f.Y, f.X] = node.Value;
-                VpTree.Remove(node);
+                r = (int)Math.Round(r + (rnd.Next(5) - 2));
+                g = (int)Math.Round(g + (rnd.Next(5) - 2));
+                b = (int)Math.Round(b + (rnd.Next(5) - 2));
+                if (r < 0)
+                    r = 0;
+                if (g < 0)
+                    g = 0;
+                if (b < 0)
+                    b = 0;
+
+                if (r > 255)
+                    r = 255;
+                if (g > 255)
+                    g = 255;
+                if (b > 255)
+                    b = 255;
+
+                int minLen = int.MaxValue;
+                //int randIndex = 1;
+                int bestIndex = 0;
+                //for (int i = 0; i < allColors.Count; ++i)
+                //{
+                //    var color = allColors[i];
+                //    var len = Math.Abs(color.R - r) + Math.Abs(color.G - g) + Math.Abs(color.B - b);
+                //    if(len < minLen)
+                //    {
+                //        randIndex = 1;
+                //        minLen = len;
+                //        bestIndex = i;
+                //    }
+                //    else if(len == minLen)
+                //    {
+                //        randIndex++;
+                //        if (rnd.Next(randIndex) == 0)
+                //            bestIndex = i;
+                //    }
+                //}
+                canvas[f.Y, f.X] = new Rgb((byte)r, (byte)g, (byte)b);// allColors[bestIndex];
+
+                allColors[bestIndex] = allColors[allColors.Count-1];
+                allColors.RemoveAt(allColors.Count-1);
+
+                if (allColors.Count % 10000 == 0)
+                    Console.WriteLine(allColors.Count);
             }
 
             using (var bitmap = new Bitmap(width, height))
