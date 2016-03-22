@@ -230,10 +230,16 @@ namespace AllColors
         static void Main(string[] args)
         {
             //2-8
-            const int colorBits = 8;
+#if DEBUG
+            const int colorBits = 5;
+            const int width = 256;
+#else
+            const int colorBits = 7;
+            const int width = 2048;
+#endif
             const int colorCount = 1 << colorBits;
-            const int width = 4096;
             const int height = colorCount * colorCount * colorCount / width;
+
 
             var allColors = new List<Rgb>();
             for (int r = 0; r < colorCount; ++r)
@@ -252,15 +258,13 @@ namespace AllColors
                 allColors[rand] = t;
             }
 
-
-
             var front = new List<YX>();
-            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
-            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
-            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
-            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
-            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
-            front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
+            //front.Add(new YX((ushort)rnd.Next(height), (ushort)rnd.Next(width)));
             front.Add(new YX((ushort)(height/2), (ushort)(width/2)));
 
             Func<YX> ololo = () => 
@@ -325,10 +329,17 @@ namespace AllColors
                 int minLen = int.MaxValue;
                 int randIndex = 1;
                 int bestIndex = 0;
-                for (int i = 0; i < allColors.Count && i<1000; ++i)
+                for (int i = 0; i < allColors.Count && i<10000; ++i)
                 {
                     var color = allColors[i];
-                    var len = Math.Abs(color.R - r) + Math.Abs(color.G - g) + Math.Abs(color.B - b);
+                    var ar = Math.Abs(color.R - r);// + 1;
+                    var ag = Math.Abs(color.G - g);// + 1;
+                    var ab = Math.Abs(color.B - b);// + 1;
+
+                    var len = ar * (256 - ab) + ag * (256 - ab) + ab * ab;
+                    //var len = ar * ar + ag * ab + ab * ar; //норм
+                    //var len = ar * ag + ag * ab + ab * ab; //плохая
+                    //var len = ar * ag + ag * ag + ab * ar; //хорошая
                     if(len < minLen)
                     {
                         randIndex = 1;
